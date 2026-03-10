@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TraderDeck — Trading Flashcards</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070b0f;
+  --surface:#0d1117;
+  --surface2:#111820;
+  --surface3:#16202c;
+  --border:#1e2d3d;
+  --border2:#253545;
+  --green:#00d084;
+  --green2:#00ff9d;
+  --red:#ff3b5c;
+  --yellow:#f5c518;
+  --blue:#3b9eff;
+  --text:#c9d4e0;
+  --text2:#7a8fa0;
+  --muted:#3a4f60;
+  --white:#e8f0f8;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'IBM Plex Sans',sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* Scanline effect */
+body::before{
+  content:'';position:fixed;inset:0;z-index:999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 10% 20%,rgba(0,208,132,0.04) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 50% at 90% 80%,rgba(59,158,255,0.03) 0%,transparent 60%);
+}
+
+/* ===== PAGES ===== */
+.page{position:fixed;inset:0;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .35s ease,transform .35s ease;transform:translateY(12px);z-index:1;}
+.page.active{opacity:1;pointer-events:all;transform:translateY(0);}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 80px;position:relative;z-index:1;}
+
+/* ===== TOPBAR ===== */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 0 12px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:32px;gap:12px;
+}
+.brand{
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.brand-icon{
+  width:30px;height:30px;
+  background:var(--green);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#000;
+  font-family:'IBM Plex Mono',monospace;
+}
+.brand-name{
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;font-size:16px;
+  color:var(--white);letter-spacing:-.01em;
+}
+.brand-name span{color:var(--green);}
+.live-dot{
+  display:flex;align-items:center;gap:5px;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;color:var(--green);
+  padding:3px 10px;
+  border:1px solid rgba(0,208,132,.25);
+  border-radius:3px;
+  background:rgba(0,208,132,.06);
+}
+.live-dot::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite;}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;}
+.tab{
+  padding:5px 14px;
+  background:transparent;border:1px solid var(--border);
+  border-radius:3px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text2);cursor:pointer;transition:all .2s;
+  letter-spacing:.05em;white-space:nowrap;
+}
+.tab:hover,.tab.active{
+  background:rgba(0,208,132,.08);
+  border-color:rgba(0,208,132,.4);
+  color:var(--green);
+}
+
+/* ===== HOME ===== */
+.ticker-bar{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:10px 16px;
+  margin-bottom:28px;
+  display:flex;gap:24px;flex-wrap:wrap;
+  overflow:hidden;
+}
+.ticker-item{
+  display:flex;align-items:center;gap:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+}
+.ticker-pair{color:var(--text2);}
+.ticker-val{color:var(--white);font-weight:600;}
+.ticker-chg{font-size:10px;padding:2px 6px;border-radius:2px;}
+.up{color:var(--green);background:rgba(0,208,132,.1);}
+.dn{color:var(--red);background:rgba(255,59,92,.1);}
+
+.hero-title{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:clamp(1.6rem,4vw,2.6rem);
+  font-weight:600;color:var(--white);
+  line-height:1.2;margin-bottom:8px;
+}
+.hero-title .g{color:var(--green);}
+.hero-sub{color:var(--text2);font-size:14px;margin-bottom:32px;font-family:'IBM Plex Mono',monospace;}
+
+/* Module cards */
+.modules{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:32px;}
+.mod-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:6px;padding:20px;
+  cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.mod-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--accent,var(--green));
+  opacity:0;transition:opacity .2s;
+}
+.mod-card:hover{border-color:var(--border2);background:var(--surface2);}
+.mod-card:hover::before{opacity:1;}
+.mod-card[data-accent="green"]{--accent:var(--green);}
+.mod-card[data-accent="blue"]{--accent:var(--blue);}
+.mod-card[data-accent="yellow"]{--accent:var(--yellow);}
+.mod-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:2px;
+  display:inline-block;margin-bottom:12px;
+}
+.mod-tag.g{color:var(--green);background:rgba(0,208,132,.1);border:1px solid rgba(0,208,132,.2);}
+.mod-tag.b{color:var(--blue);background:rgba(59,158,255,.1);border:1px solid rgba(59,158,255,.2);}
+.mod-tag.y{color:var(--yellow);background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.2);}
+.mod-title{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;}
+.mod-desc{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:14px;}
+.mod-stats{display:flex;gap:14px;}
+.mod-stat{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+.mod-stat span{color:var(--text2);}
+.start-btn{
+  width:100%;margin-top:28px;
+  padding:14px;
+  background:var(--green);color:#000;
+  border:none;border-radius:4px;
+  font-family:'IBM Plex Mono',monospace;font-weight:600;
+  font-size:13px;cursor:pointer;transition:all .2s;
+  letter-spacing:.05em;
+}
+.start-btn:hover{background:var(--green2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,208,132,.25);}
+
+/* ===== MODULE PAGE ===== */
+.mod-header{margin-bottom:24px;}
+.mod-breadcrumb{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text2);letter-spacing:.08em;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.mod-breadcrumb .sep{color:var(--muted);}
+.mod-h1{
+  font-family:'IBM Plex Mono',monospace;font-weight:600;
+  font-size:clamp(1.2rem,3vw,1.7rem);color:var(--white);
+  margin-bottom:4px;
+}
+.mod-sub{font-size:12px;color:var(--text2);}
+
+.stats-bar{
+  display:flex;gap:1px;margin-bottom:24px;
+  background:var(--border);border-radius:4px;overflow:hidden;
+}
+.sbar-item{
+  flex:1;background:var(--surface);padding:12px 14px;
+  text-align:center;
+}
+.sbar-val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:var(--green);}
+.sbar-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+
+.pbar-wrap{margin-bottom:28px;}
+.pbar-label{
+  display:flex;justify-content:space-between;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text2);margin-bottom:6px;
+}
+.pbar{height:3px;background:var(--border);border-radius:1px;overflow:hidden;}
+.pfill{height:100%;background:var(--green);border-radius:1px;transition:width .5s ease;}
+
+/* Card grid */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.fc{height:190px;perspective:1000px;cursor:pointer;animation:cardIn .4s ease both;}
+.fc:nth-child(1){animation-delay:.0s}.fc:nth-child(2){animation-delay:.05s}.fc:nth-child(3){animation-delay:.10s}
+.fc:nth-child(4){animation-delay:.15s}.fc:nth-child(5){animation-delay:.20s}.fc:nth-child(6){animation-delay:.25s}
+.fc:nth-child(7){animation-delay:.30s}.fc:nth-child(8){animation-delay:.35s}.fc:nth-child(9){animation-delay:.40s}
+.fc:nth-child(10){animation-delay:.45s}.fc:nth-child(11){animation-delay:.50s}.fc:nth-child(12){animation-delay:.55s}
+.fc-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1);}
+.fc.flipped .fc-inner{transform:rotateY(180deg);}
+.fc-face{
+  position:absolute;inset:0;border-radius:6px;padding:16px;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.fc-front{background:var(--surface);border:1px solid var(--border);}
+.fc-front:hover{border-color:var(--border2);}
+.fc-back{background:var(--surface2);border:1px solid rgba(0,208,132,.2);transform:rotateY(180deg);}
+.fc-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  display:flex;justify-content:space-between;
+}
+.fc-tag .num{color:var(--green);opacity:.7;}
+.fc-q{font-size:13px;line-height:1.55;flex:1;display:flex;align-items:center;margin:10px 0;color:var(--white);}
+.fc-hint{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);animation:blink 2s 1s infinite;}
+.fc-albl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.1em;}
+.fc-ans{font-size:12px;line-height:1.6;flex:1;display:flex;align-items:center;margin:8px 0;color:var(--text);}
+.fc-ahint{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);}
+
+.card-actions{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;}
+.ca-btn{
+  flex:1;min-width:80px;padding:9px 12px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:3px;color:var(--text2);
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  cursor:pointer;transition:all .2s;text-align:center;
+  letter-spacing:.04em;
+}
+.ca-btn:hover{border-color:var(--green);color:var(--green);}
+.ca-btn.primary{background:rgba(0,208,132,.1);border-color:rgba(0,208,132,.3);color:var(--green);}
+.quiz-cta{
+  width:100%;margin-top:20px;
+  padding:13px;
+  background:var(--surface2);
+  border:1px dashed rgba(59,158,255,.35);
+  border-radius:4px;
+  color:var(--blue);
+  font-family:'IBM Plex Mono',monospace;font-size:12px;
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  letter-spacing:.04em;
+}
+.quiz-cta:hover{background:rgba(59,158,255,.06);border-color:rgba(59,158,255,.6);}
+
+/* ===== QUIZ ===== */
+.quiz-meta{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;flex-wrap:wrap;gap:10px;
+}
+.quiz-score{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,208,132,.08);border:1px solid rgba(0,208,132,.2);
+  border-radius:3px;padding:5px 12px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);
+}
+.quiz-prog{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);}
+.quiz-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:28px 24px;
+  animation:cardIn .35s ease both;
+  position:relative;overflow:hidden;
+}
+.quiz-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--green),var(--blue));
+}
+.quiz-cat{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text2);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.quiz-cat .sep{width:20px;height:1px;background:var(--border2);}
+.quiz-q{
+  font-family:'IBM Plex Mono',monospace;font-weight:500;
+  font-size:clamp(.9rem,2.5vw,1.05rem);
+  line-height:1.6;color:var(--white);margin-bottom:24px;
+}
+.opts{display:flex;flex-direction:column;gap:8px;}
+.opt{
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:4px;padding:12px 16px;
+  cursor:pointer;transition:all .18s;
+  animation:optIn .3s ease both;
+}
+.opt:nth-child(1){animation-delay:.04s}.opt:nth-child(2){animation-delay:.08s}
+.opt:nth-child(3){animation-delay:.12s}.opt:nth-child(4){animation-delay:.16s}
+.opt:hover:not(.disabled){
+  border-color:rgba(0,208,132,.4);
+  background:rgba(0,208,132,.05);
+  transform:translateX(4px);
+}
+.opt.correct{border-color:var(--green)!important;background:rgba(0,208,132,.08)!important;}
+.opt.wrong{border-color:var(--red)!important;background:rgba(255,59,92,.08)!important;}
+.opt.disabled{cursor:default;transform:none!important;}
+.opt-key{
+  width:28px;height:28px;flex-shrink:0;
+  background:var(--surface3);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;
+  color:var(--text2);transition:all .2s;
+}
+.opt.correct .opt-key{background:var(--green);color:#000;}
+.opt.wrong .opt-key{background:var(--red);color:#fff;}
+.opt-txt{font-size:13px;line-height:1.5;color:var(--text);}
+.feedback{
+  margin-top:14px;border-radius:3px;padding:11px 14px;
+  display:none;font-family:'IBM Plex Mono',monospace;font-size:11px;
+  align-items:center;gap:8px;animation:fadeUp .25s ease both;
+}
+.feedback.ok{background:rgba(0,208,132,.08);border:1px solid rgba(0,208,132,.25);color:var(--green);display:flex;}
+.feedback.no{background:rgba(255,59,92,.08);border:1px solid rgba(255,59,92,.25);color:var(--red);display:flex;}
+.quiz-nav{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:10px;flex-wrap:wrap;}
+.qbtn{
+  padding:10px 22px;background:var(--green);color:#000;
+  border:none;border-radius:3px;
+  font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;
+  cursor:pointer;transition:all .2s;display:none;letter-spacing:.04em;
+}
+.qbtn.show{display:block;}
+.qbtn:hover{background:var(--green2);}
+.back-link{
+  display:flex;align-items:center;gap:5px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--text2);cursor:pointer;transition:all .2s;
+  border:1px solid var(--border);border-radius:3px;padding:6px 12px;
+}
+.back-link:hover{color:var(--green);border-color:rgba(0,208,132,.3);}
+
+/* ===== RESULT ===== */
+#resultPage .wrap{text-align:center;}
+.res-header{text-align:center;margin-bottom:28px;}
+.res-tag{
+  display:inline-block;
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--green);border:1px solid rgba(0,208,132,.25);
+  background:rgba(0,208,132,.06);
+  border-radius:3px;padding:4px 12px;margin-bottom:14px;
+}
+.res-title{
+  font-family:'IBM Plex Mono',monospace;font-weight:600;
+  font-size:clamp(1.4rem,4vw,2.2rem);color:var(--white);
+  margin-bottom:6px;
+}
+.res-sub{font-size:13px;color:var(--text2);font-family:'IBM Plex Mono',monospace;}
+
+.score-display{
+  display:inline-flex;flex-direction:column;align-items:center;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:28px 40px;margin:24px auto;
+  position:relative;
+}
+.score-display::before{
+  content:'';position:absolute;inset:0;border-radius:8px;
+  background:radial-gradient(circle at 50% 0%,rgba(0,208,132,.07) 0%,transparent 60%);
+  pointer-events:none;
+}
+.score-num{
+  font-family:'IBM Plex Mono',monospace;font-weight:600;
+  font-size:64px;line-height:1;color:var(--green);
+}
+.score-denom{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text2);margin-top:4px;}
+.score-pct{
+  font-family:'IBM Plex Mono',monospace;font-size:18px;
+  color:var(--white);margin-top:10px;
+}
+
+.res-stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;}
+.rs{
+  flex:1;min-width:90px;max-width:140px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:16px 10px;
+}
+.rs-n{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:22px;}
+.rs-n.g{color:var(--green);}.rs-n.r{color:var(--red);}.rs-n.b{color:var(--blue);}
+.rs-l{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:3px;}
+
+.grade{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;
+  color:var(--white);margin-bottom:4px;
+}
+.grade-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);margin-bottom:28px;}
+
+.review-section{text-align:left;}
+.review-head{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--text2);letter-spacing:.08em;text-transform:uppercase;
+  padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:14px;
+}
+.rev-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:4px;padding:14px 16px;margin-bottom:8px;
+  animation:cardIn .4s ease both;
+}
+.rev-item.ok{border-left:2px solid var(--green);}
+.rev-item.no{border-left:2px solid var(--red);}
+.rev-q{font-size:13px;color:var(--white);margin-bottom:8px;font-weight:500;}
+.rev-row{display:flex;gap:8px;font-size:11px;margin-bottom:3px;flex-wrap:wrap;}
+.rev-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;min-width:75px;text-transform:uppercase;letter-spacing:.08em;}
+.rev-lbl.g{color:var(--green);}.rev-lbl.r{color:var(--red);}
+
+.res-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px;}
+.ra{
+  padding:11px 20px;background:var(--surface);border:1px solid var(--border);
+  border-radius:3px;color:var(--text);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  cursor:pointer;transition:all .2s;letter-spacing:.04em;
+}
+.ra:hover{border-color:var(--green);color:var(--green);}
+.ra.primary{background:var(--green);color:#000;border-color:var(--green);}
+.ra.primary:hover{background:var(--green2);}
+.ra.dl{background:rgba(59,158,255,.08);border-color:rgba(59,158,255,.3);color:var(--blue);}
+.ra.dl:hover{background:rgba(59,158,255,.15);}
+
+/* ===== ANIMATIONS ===== */
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:.8}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardIn{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes optIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes confettiDrop{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(540deg);opacity:0}}
+.confetti-piece{position:fixed;pointer-events:none;z-index:998;animation:confettiDrop linear forwards;}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:600px){
+  .wrap{padding:0 12px 60px;}
+  .topbar{padding:14px 0 10px;margin-bottom:22px;}
+  .brand-name{font-size:14px;}
+  .tab{font-size:9px;padding:4px 9px;}
+  .ticker-bar{padding:8px 12px;gap:14px;}
+  .ticker-item{gap:5px;}
+  .hero-title{font-size:1.4rem;}
+  .modules{grid-template-columns:1fr;}
+  .card-grid{grid-template-columns:1fr;}
+  .fc{height:175px;}
+  .card-actions{gap:5px;}
+  .ca-btn{font-size:10px;padding:8px 8px;}
+  .quiz-card{padding:20px 14px;}
+  .opt{padding:10px 12px;gap:9px;}
+  .opt-key{width:24px;height:24px;font-size:10px;}
+  .opt-txt{font-size:12px;}
+  .res-stats{gap:7px;}
+  .rs{min-width:70px;}
+  .res-actions{flex-direction:column;align-items:stretch;}
+  .ra{text-align:center;}
+  .score-display{padding:20px 28px;}
+  .score-num{font-size:52px;}
+  .quiz-nav{flex-direction:column-reverse;align-items:stretch;}
+  .qbtn{text-align:center;}
+  .stats-bar{flex-wrap:wrap;}
+  .sbar-item{min-width:80px;}
+}
+
+/* ===== PRINT ===== */
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  body{background:#fff!important;color:#111!important;}
+  .page{position:static!important;opacity:1!important;transform:none!important;overflow:visible!important;}
+  #homePage,#loadingPage,#modPage,#quizPage{display:none!important;}
+  #resultPage{display:block!important;position:static!important;}
+  .topbar,.res-actions{display:none!important;}
+  .wrap{padding:20px!important;max-width:100%!important;}
+  .res-tag,.res-title,.res-sub,.grade,.grade-sub{color:#111!important;}
+  .score-display{background:#f5f5f5!important;border-color:#ddd!important;}
+  .score-num{color:#1a7a4a!important;}
+  .score-denom,.score-pct{color:#555!important;}
+  .rs{background:#f5f5f5!important;border-color:#ddd!important;}
+  .rs-n.g{color:#1a7a4a!important;}.rs-n.r{color:#a02020!important;}.rs-n.b{color:#1a4a8a!important;}
+  .rs-l{color:#888!important;}
+  .review-head{color:#555!important;border-color:#ddd!important;}
+  .rev-item{background:#fafafa!important;border-color:#ddd!important;break-inside:avoid;}
+  .rev-item.ok{border-left-color:#1a7a4a!important;}
+  .rev-item.no{border-left-color:#a02020!important;}
+  .rev-q{color:#111!important;}
+  .rev-lbl.g{color:#1a7a4a!important;}.rev-lbl.r{color:#a02020!important;}
+  .confetti-piece{display:none!important;}
+  .print-head{display:block!important;}
+}
+.print-head{
+  display:none;text-align:center;margin-bottom:20px;padding-bottom:14px;
+  border-bottom:2px solid #eee;font-family:monospace;
+}
+.print-head h2{font-size:18px;color:#111;}
+.print-head p{font-size:11px;color:#888;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<!-- ======== HOME ======== -->
+<div class="page active" id="homePage">
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">T</div>
+      <div class="brand-name">Trader<span>Deck</span></div>
+    </div>
+    <div class="live-dot">LIVE STUDY</div>
+  </div>
+
+  <div class="ticker-bar">
+    <div class="ticker-item"><span class="ticker-pair">MARKET STRUCTURE</span><span class="ticker-val">12</span><span class="ticker-chg up">CARDS</span></div>
+    <div class="ticker-item"><span class="ticker-pair">DAILY BIAS</span><span class="ticker-val">10</span><span class="ticker-chg up">CARDS</span></div>
+    <div class="ticker-item"><span class="ticker-pair">MOMENTUM</span><span class="ticker-val">8</span><span class="ticker-chg up">CARDS</span></div>
+    <div class="ticker-item"><span class="ticker-pair">TOTAL Q&A</span><span class="ticker-val">30</span><span class="ticker-chg up">QUIZ</span></div>
+  </div>
+
+  <div class="hero-title">Master Your<br><span class="g">Trading Edge.</span></div>
+  <div class="hero-sub">// RefinedFX · TTrades · Market Structure · Daily Bias · Momentum</div>
+
+  <div class="modules">
+    <div class="mod-card" data-accent="green" onclick="openModule('ms')">
+      <div class="mod-tag g">MODULE 01</div>
+      <div class="mod-title">Market Structure</div>
+      <div class="mod-desc">Bullish & bearish trends, structure breaks, liquidity, fractals, and stop hunts.</div>
+      <div class="mod-stats">
+        <div class="mod-stat"><span>12</span> flashcards</div>
+        <div class="mod-stat"><span>12</span> quiz Q's</div>
+        <div class="mod-stat"><span>RefinedFX</span></div>
+      </div>
+    </div>
+    <div class="mod-card" data-accent="blue" onclick="openModule('db')">
+      <div class="mod-tag b">MODULE 02</div>
+      <div class="mod-title">Daily Bias</div>
+      <div class="mod-desc">PDH/PDL, PWH/PWL, swing points, failure to displace, and the next day model.</div>
+      <div class="mod-stats">
+        <div class="mod-stat"><span>10</span> flashcards</div>
+        <div class="mod-stat"><span>10</span> quiz Q's</div>
+        <div class="mod-stat"><span>TTrades</span></div>
+      </div>
+    </div>
+    <div class="mod-card" data-accent="yellow" onclick="openModule('mom')">
+      <div class="mod-tag y">MODULE 03</div>
+      <div class="mod-title">Momentum</div>
+      <div class="mod-desc">Rate of change, impulsive vs corrective moves, momentum as trade confirmation.</div>
+      <div class="mod-stats">
+        <div class="mod-stat"><span>8</span> flashcards</div>
+        <div class="mod-stat"><span>8</span> quiz Q's</div>
+        <div class="mod-stat"><span>RefinedFX</span></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startAllQuiz()">▶ START FULL QUIZ — ALL 30 QUESTIONS</button>
+</div>
+</div>
+
+<!-- ======== MODULE PAGE ======== -->
+<div class="page" id="modPage">
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><div class="brand-icon">T</div><div class="brand-name">Trader<span>Deck</span></div></div>
+    <div class="tabs">
+      <div class="tab" onclick="goPage('homePage')">← HOME</div>
+      <div class="tab active" id="modTabLabel">MODULE</div>
+      <div class="tab" onclick="startModuleQuiz()">QUIZ MODE</div>
+    </div>
+  </div>
+
+  <div class="mod-header">
+    <div class="mod-breadcrumb">
+      <span onclick="goPage('homePage')" style="cursor:pointer;color:var(--green)">HOME</span>
+      <span class="sep">›</span>
+      <span id="modBreadcrumb">MODULE</span>
+    </div>
+    <div class="mod-h1" id="modH1">—</div>
+    <div class="mod-sub" id="modSub">—</div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="sbar-item"><div class="sbar-val" id="sbTotal">0</div><div class="sbar-lbl">Cards</div></div>
+    <div class="sbar-item"><div class="sbar-val" id="sbFlipped">0</div><div class="sbar-lbl">Reviewed</div></div>
+    <div class="sbar-item"><div class="sbar-val" id="sbPct">0%</div><div class="sbar-lbl">Progress</div></div>
+  </div>
+
+  <div class="pbar-wrap">
+    <div class="pbar-label"><span>PROGRESS</span><span id="pbarTxt">0 / 0</span></div>
+    <div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
+  </div>
+
+  <div class="card-grid" id="cardGrid"></div>
+
+  <div class="card-actions" style="margin-top:24px;">
+    <button class="ca-btn" onclick="flipAllCards()">⇄ FLIP ALL</button>
+    <button class="ca-btn" onclick="resetCards()">↺ RESET</button>
+    <button class="ca-btn primary" onclick="goPage('homePage')">← MODULES</button>
+  </div>
+  <button class="quiz-cta" onclick="startModuleQuiz()">▶ START QUIZ FOR THIS MODULE →</button>
+</div>
+</div>
+
+<!-- ======== QUIZ PAGE ======== -->
+<div class="page" id="quizPage">
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><div class="brand-icon">T</div><div class="brand-name">Trader<span>Deck</span></div></div>
+    <div class="tabs">
+      <div class="tab" onclick="goPage('homePage')">← HOME</div>
+      <div class="tab" onclick="goPage('modPage')">CARDS</div>
+      <div class="tab active">QUIZ</div>
+    </div>
+  </div>
+
+  <div class="quiz-meta">
+    <div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px" id="quizModLabel">—</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--white)" id="quizTitle">—</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="quiz-prog" id="quizProg">1 / 10</div>
+      <div class="quiz-score">✓ <span id="quizScoreLive">0</span></div>
+    </div>
+  </div>
+
+  <div class="pbar-wrap" style="margin-bottom:20px;">
+    <div class="pbar"><div class="pfill" id="quizBar" style="width:0%"></div></div>
+  </div>
+
+  <div class="quiz-card" id="quizCard">
+    <div class="quiz-cat"><span id="quizCat">MARKET STRUCTURE</span><span class="sep"></span><span id="quizQNum">Q 01</span></div>
+    <div class="quiz-q" id="quizQ">—</div>
+    <div class="opts" id="quizOpts"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="quiz-nav">
+    <div class="back-link" onclick="goPage('modPage')">← Back to Cards</div>
+    <div style="display:flex;gap:8px;">
+      <button class="qbtn" id="nextBtn" onclick="nextQ()">NEXT →</button>
+      <button class="qbtn" id="finishBtn" onclick="showResult()">VIEW RESULTS ▶</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======== RESULT PAGE ======== -->
+<div class="page" id="resultPage">
+<div class="wrap">
+  <div class="print-head">
+    <h2>TraderDeck — Quiz Results</h2>
+    <p id="printMeta"></p>
+  </div>
+  <div class="topbar">
+    <div class="brand"><div class="brand-icon">T</div><div class="brand-name">Trader<span>Deck</span></div></div>
+    <div class="tabs">
+      <div class="tab" onclick="goPage('homePage')">← HOME</div>
+      <div class="tab" onclick="goPage('modPage')">CARDS</div>
+      <div class="tab" onclick="retryQuiz()">RETRY</div>
+    </div>
+  </div>
+
+  <div class="res-header">
+    <div class="res-tag">// SESSION COMPLETE</div>
+    <div class="res-title" id="resTitle">Quiz Results</div>
+    <div class="res-sub" id="resSub">—</div>
+  </div>
+
+  <div class="score-display">
+    <div class="score-num" id="scoreNum">0</div>
+    <div class="score-denom" id="scoreDenom">out of 0 questions</div>
+    <div class="score-pct" id="scorePct">0%</div>
+  </div>
+
+  <div class="res-stats">
+    <div class="rs"><div class="rs-n g" id="rsCorrect">0</div><div class="rs-l">Correct</div></div>
+    <div class="rs"><div class="rs-n r" id="rsWrong">0</div><div class="rs-l">Wrong</div></div>
+    <div class="rs"><div class="rs-n b" id="rsAcc">0%</div><div class="rs-l">Accuracy</div></div>
+  </div>
+
+  <div class="grade" id="grade">—</div>
+  <div class="grade-sub" id="gradeSub">—</div>
+
+  <div class="review-section">
+    <div class="review-head">// ANSWER REVIEW</div>
+    <div id="reviewItems"></div>
+  </div>
+
+  <div class="res-actions">
+    <button class="ra dl" onclick="window.print()">⬇ EXPORT PDF</button>
+    <button class="ra" onclick="retryQuiz()">↺ RETRY QUIZ</button>
+    <button class="ra" onclick="goPage('modPage')">← VIEW CARDS</button>
+    <button class="ra primary" onclick="goPage('homePage')">⌂ HOME</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ============ DATA ============
+const MODULES = {
+  ms: {
+    label: 'MODULE 01',
+    title: 'Market Structure',
+    sub: 'RefinedFX · Bullish trend, Bearish trend, Structure breaks, Liquidity, Fractals, Stop Hunts',
+    color: 'green',
+    cards: [
+      {q:"What are the three things price can do in the market?", a:"Price can trend up (HH & HL), trend down (LH & LL), or accumulate/contract (ranging)."},
+      {q:"What defines a bullish trend?", a:"An uptrend is made by a Higher Low (HL) followed by a Higher High (HH). The objective is to catch the higher lows."},
+      {q:"What defines a bearish trend?", a:"A downtrend is created by a Lower High (LH) followed by a Lower Low (LL). The objective is to catch the lower highs."},
+      {q:"When can you confirm a break of bullish structure?", a:"You cannot assume a break of bullish structure until a Higher Low has clearly been broken."},
+      {q:"When can you confirm a break of bearish structure?", a:"You cannot assume a break of bearish structure until a Lower High has clearly been broken."},
+      {q:"What is a Market Structure Break (MSB)?", a:"A MSB is defined as a clear candle body close above a previous structure high or structure low — not just a wick."},
+      {q:"What is the difference between a break and a liquidity grab?", a:"A break has a substantial candle body close above/below the level. A liquidity grab is where the candle just wicks above/below without closing there."},
+      {q:"What is liquidity in trading?", a:"Liquidity is where money sits in the market. Above every high are buy stops; below every low are sell stops. Big players grab this before continuing or reversing price."},
+      {q:"What are the main types of liquidity levels?", a:"Highs & equal highs, lows & equal lows, and gaps/inefficiencies. Fractal highs and lows are the most common liquidity levels."},
+      {q:"What is a fractal high or low?", a:"A fractal is formed on the middle candle of a 3 or 5 candlestick formation. A fractal high has the highest high with lower highs on both sides; a fractal low has the lowest low with higher lows on both sides."},
+      {q:"What are the two rules for a valid Stop Hunt?", a:"1) It must be a fractal high or low that was raided. 2) The candle MUST NOT have a valid close above the fractal high or low."},
+      {q:"If price breaks a higher low in an uptrend, what does it signal?", a:"It signals that price could reverse and start a bearish trend. But remember: price is what it is until it isn't — confirm with a lower high break."},
+    ],
+    quiz: [
+      {q:"What are the THREE things price can do according to market structure?", opts:["Trend up, trend down, and accumulate/contract","Move fast, move slow, and consolidate","Break structure, form patterns, and reverse","Impulse, correction, and distribution"], ci:0},
+      {q:"What pattern defines a BULLISH trend?", opts:["Lower Highs (LH) and Lower Lows (LL)","Higher Highs (HH) and Higher Lows (HL)","Equal Highs (EH) and Equal Lows (EL)","Higher Lows (HL) and Lower Highs (LH)"], ci:1},
+      {q:"What pattern defines a BEARISH trend?", opts:["Higher Highs and Higher Lows","Equal Highs and Equal Lows","Lower Highs (LH) and Lower Lows (LL)","Lower Highs and Higher Lows"], ci:2},
+      {q:"A valid Market Structure Break requires:", opts:["Any wick above the previous structure high","A clear candle body close above/below the structure level","Two consecutive candles near the level","A news event to trigger the move"], ci:1},
+      {q:"A liquidity grab is best described as:", opts:["A strong body close through a key level","A wick above/below a level with no valid close beyond it","A large volume spike on the chart","Price consolidating near a level for 3+ candles"], ci:1},
+      {q:"Where do sell stops typically rest in the market?", opts:["Above every high","Below every low","At round numbers only","At the 50% retracement level"], ci:1},
+      {q:"A fractal high is formed on which candle?", opts:["The first candle in a 3-candle formation","The last candle in a 5-candle formation","The middle candle of a 3 or 5 candlestick formation","The largest candle in any formation"], ci:2},
+      {q:"For a Stop Hunt to be valid, what must NOT happen?", opts:["Price must not have any momentum","The candle must not have a valid close above/below the fractal level","Price must not break the previous swing","Volume must not exceed average"], ci:1},
+      {q:"When should you NOT assume a change in bullish trend?", opts:["Until a fractal high is created","Until a Higher Low has clearly been broken","Until the RSI shows overbought","Until price consolidates for 10 candles"], ci:1},
+      {q:"Market structure is MORE important than:", opts:["Price action","Volume analysis","Liquidity","Chart patterns"], ci:2},
+      {q:"In an uptrend, after price breaks above structure, what typically happens next?", opts:["Price immediately continues higher without pause","Price retraces into the new range (the correction)","Price gaps down and reverses","Price forms a new equal high"], ci:1},
+      {q:"Equal highs and equal lows are best described as:", opts:["Natural market formations","Engineered/manipulated liquidity levels","Signs of a strong trend","Random price noise"], ci:1},
+    ]
+  },
+  db: {
+    label: 'MODULE 02',
+    title: 'Daily Bias',
+    sub: 'TTrades · PDH/PDL, PWH/PWL, Swing Points, Failure to Displace, Next Day Model',
+    color: 'blue',
+    cards: [
+      {q:"What is Daily Bias in trading?", a:"Daily bias is the directional expectation for the trading day, determined by analyzing key levels like PDH/PDL, PWH/PWL, swing points, and failure to displace setups."},
+      {q:"What are Previous Day High (PDH) and Previous Day Low (PDL)?", a:"PDH and PDL are liquidity levels from the prior trading day. They can be used as a draw on liquidity (target) or to frame a reversal when price fails to displace beyond them."},
+      {q:"How can PDH/PDL be used to frame a reversal?", a:"When price reaches a PDH or PDL and fails to displace (close convincingly beyond it), a reversal can be framed off that level — anticipating price to move in the opposite direction."},
+      {q:"What are Previous Week High (PWH) and Previous Week Low (PWL)?", a:"PWH and PWL are weekly liquidity levels. Like PDH/PDL, they can be used as a draw on liquidity or to frame a reversal or continuation depending on how price reacts."},
+      {q:"What is a Swing Point in the context of Daily Bias?", a:"Swing points are significant highs and lows on the daily timeframe that can be used as a draw on liquidity or to frame a reversal when price reaches and reacts at them."},
+      {q:"What is 'Failure to Displace' and why is it important?", a:"Failure to Displace occurs when price moves above/below an old high or low but fails to close convincingly beyond it. This failure can be used to frame a reversal in the opposite direction."},
+      {q:"What is the Next Day Model?", a:"When price respects a PD array (like PDH/PDL) or fails to displace over a swing high/low, the NEXT daily candle's direction can be anticipated based on that reaction."},
+      {q:"If price fails to displace above a PDH, what is the expected bias?", a:"If price fails to displace above PDH (bullish failure), the bias shifts bearish — you would anticipate price moving toward PDL as the next draw on liquidity."},
+      {q:"What timeframe is primarily used to analyze Daily Bias levels?", a:"The Daily timeframe is used to identify PDH/PDL, PWH/PWL, and swing points. The 4-Hour chart is often used to fine-tune entries and see the reaction more clearly."},
+      {q:"What are the 5 components of Daily Bias analysis?", a:"1) Previous Day High & Low, 2) Previous Week High & Low, 3) Swing Points, 4) Failure to Displace, 5) Next Day Model."},
+    ],
+    quiz: [
+      {q:"What is the PRIMARY purpose of analyzing Daily Bias?", opts:["To identify exact entry points with indicators","To determine the directional expectation for the trading day","To calculate position size","To identify which news events will move the market"], ci:1},
+      {q:"Previous Day High and Low (PDH/PDL) can be used as:", opts:["Stop loss levels only","A draw on liquidity or to frame a reversal/continuation","Entry signals only","Indicators of daily volume"], ci:1},
+      {q:"What happens when price 'Fails to Displace' over a level?", opts:["Price breaks through with strong momentum","Price moves sideways for multiple days","Price reaches the level but fails to close convincingly beyond it — framing a reversal","Price always comes back to test the level again"], ci:2},
+      {q:"The Next Day Model is used when:", opts:["Price breaks out of a range","Price respects a PD array or fails to displace over a swing point","Volume exceeds the 20-day average","There is a major news event"], ci:1},
+      {q:"Which timeframe is primarily used to analyze Daily Bias levels?", opts:["1-minute chart","15-minute chart","1-hour chart","Daily chart"], ci:3},
+      {q:"Previous Week High and Low (PWH/PWL) are best described as:", opts:["Intraday scalping levels","Minor support and resistance zones","Significant weekly liquidity levels for framing bias","Levels only relevant for swing traders holding weeks"], ci:2},
+      {q:"If price reaches the PDL and fails to displace below it, what is the anticipated next move?", opts:["Continue lower toward the next week's low","Reverse and potentially reach toward PDH as the draw","Consolidate at PDL for multiple days","Break PDL with the next session's open"], ci:1},
+      {q:"Swing Points in Daily Bias analysis can be used for:", opts:["Drawing trend lines only","Calculating risk-to-reward ratios","As a draw on liquidity OR to frame a reversal","Setting automatic stop losses"], ci:2},
+      {q:"Which is NOT one of the 5 components of Daily Bias?", opts:["Previous Day High & Low","Failure to Displace","RSI Divergence","Next Day Model"], ci:2},
+      {q:"The 4-Hour chart is most useful in Daily Bias analysis for:", opts:["Identifying the weekly bias direction","Fine-tuning entries and seeing how price reacts at key levels","Drawing the daily PDH/PDL levels","Calculating the next week's swing points"], ci:1},
+    ]
+  },
+  mom: {
+    label: 'MODULE 03',
+    title: 'Momentum',
+    sub: 'RefinedFX · Rate of change, Impulsive vs Corrective moves, Trade confirmation',
+    color: 'yellow',
+    cards: [
+      {q:"What is Momentum in trading?", a:"Momentum is about the rate of change in the market — how fast and how much price is moving. It measures the speed and size of a price move."},
+      {q:"How is momentum used as trade confirmation?", a:"If the corrective move back to your entry zone takes LONGER than the initial impulsive move, it confirms weak counter-pressure and gives a good indication your entry zone will hold."},
+      {q:"What does it mean if the corrective move is slower than the impulsive move?", a:"It means the counter-pressure (buyers or sellers pushing against the trend) is indecisive and weak, confirming momentum is in the direction of the original impulsive move."},
+      {q:"When looking for a BUY, how does momentum help?", a:"If the selling pressure taking price back to the origin/entry zone takes longer than the initial bullish impulsive move, this confirms buying momentum is strong and price is likely to react from the entry zone."},
+      {q:"When looking for a SELL, how does momentum help?", a:"If the buying pressure taking price back to the origin/entry zone takes longer than the initial bearish impulsive move, this confirms selling momentum is strong and price is likely to reject from the entry zone."},
+      {q:"What is an impulsive move?", a:"An impulsive move is a fast, directional price move with strong momentum — it moves quickly and covers significant distance in a short time."},
+      {q:"What is a corrective move?", a:"A corrective move is a slower, counter-directional retracement back to the origin of the impulsive move. It tests whether the impulsive momentum will continue."},
+      {q:"What does momentum help you differentiate between?", a:"Momentum helps differentiate between whether a move is impulsive (strong, fast, directional) or corrective (slow, weak, counter-trend)."},
+    ],
+    quiz: [
+      {q:"Momentum in trading is best described as:", opts:["The total number of candles in a trend","The rate of change — how fast AND how much price is moving","The distance between the high and low of a candle","The volume at a specific price level"], ci:1},
+      {q:"How do you use momentum as trade confirmation?", opts:["Wait for an RSI reading above 70","If the corrective move takes LONGER than the impulsive move to return to entry, momentum confirms your bias","If price makes 3 consecutive green candles","If volume spikes above the 20-period average"], ci:1},
+      {q:"If the corrective (retracement) move is SLOWER than the impulsive move, what does this indicate?", opts:["The trend is about to reverse","The counter-pressure is weak and indecisive — confirming the original direction","Price needs more time before continuing","You should move your stop loss to breakeven"], ci:1},
+      {q:"You're looking for a BUY. The bullish impulse took 1 hour. The correction took 2.5 hours. What does this indicate?", opts:["Bearish momentum — look for sells instead","The setup is invalid due to long correction time","Bullish momentum is confirmed — selling pressure is weak","Price is ranging and no trade should be taken"], ci:2},
+      {q:"You're looking for a SELL. The bearish impulse took 9 hours. The retracement took 1 day. What does this indicate?", opts:["Bullish reversal — selling is over","Bearish momentum is confirmed — buying pressure is weak/indecisive","The timeframe is too long to trade","This is an accumulation phase"], ci:1},
+      {q:"What is an IMPULSIVE move characterized by?", opts:["Slow, grinding price action with many wicks","Fast, directional price move with strong momentum covering significant distance quickly","Price consolidating at a key level","Multiple doji candles forming near a level"], ci:1},
+      {q:"What is a CORRECTIVE move?", opts:["The main trend direction of the market","A fast spike through a key level","A slower, counter-directional retracement back toward the origin of the impulsive move","A breakout from a consolidation pattern"], ci:2},
+      {q:"Momentum analysis helps you differentiate between:", opts:["Support and resistance levels","Whether a move is impulsive (strong) or corrective (weak)","Bullish and bearish candlestick patterns","Daily and weekly timeframe levels"], ci:1},
+    ]
+  }
+};
+
+// ============ STATE ============
+let currentMod = 'ms';
+let flippedSet = new Set();
+let currentCards = [];
+let quizData = [];
+let quizIndex = 0, quizScore = 0, quizAnswers = [];
+let quizModLabel = '';
+
+// ============ NAVIGATION ============
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById(id).scrollTop = 0;
+}
+
+// ============ OPEN MODULE ============
+function openModule(mod){
+  currentMod = mod;
+  const m = MODULES[mod];
+  currentCards = m.cards;
+  flippedSet.clear();
+
+  document.getElementById('modTabLabel').textContent = m.label;
+  document.getElementById('modBreadcrumb').textContent = m.title.toUpperCase();
+  document.getElementById('modH1').textContent = m.title;
+  document.getElementById('modSub').textContent = m.sub;
+  document.getElementById('sbTotal').textContent = m.cards.length;
+  updateProgress();
+  renderCards();
+  goPage('modPage');
+}
+
+function renderCards(){
+  const grid = document.getElementById('cardGrid');
+  grid.innerHTML = '';
+  const m = MODULES[currentMod];
+  currentCards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'fc';
+    el.innerHTML = `<div class="fc-inner">
+      <div class="fc-face fc-front">
+        <div class="fc-tag"><span>CARD ${String(i+1).padStart(2,'0')}</span><span class="num">${m.label}</span></div>
+        <div class="fc-q">${card.q}</div>
+        <div class="fc-hint">▸ click to reveal answer</div>
+      </div>
+      <div class="fc-face fc-back">
+        <div class="fc-albl">// ANSWER</div>
+        <div class="fc-ans">${card.a}</div>
+        <div class="fc-ahint">click again to close</div>
+      </div>
+    </div>`;
+    el.addEventListener('click', () => {
+      el.classList.toggle('flipped');
+      el.classList.contains('flipped') ? flippedSet.add(i) : flippedSet.delete(i);
+      updateProgress();
+    });
+    grid.appendChild(el);
+  });
+}
+
+function updateProgress(){
+  const n = flippedSet.size, t = currentCards.length;
+  const p = t ? Math.round(n/t*100) : 0;
+  document.getElementById('sbFlipped').textContent = n;
+  document.getElementById('sbPct').textContent = p+'%';
+  document.getElementById('pfill').style.width = p+'%';
+  document.getElementById('pbarTxt').textContent = `${n} / ${t}`;
+}
+
+function flipAllCards(){
+  const cards = document.querySelectorAll('.fc');
+  const allFlipped = [...cards].every(c => c.classList.contains('flipped'));
+  cards.forEach((c, i) => {
+    allFlipped ? c.classList.remove('flipped') : c.classList.add('flipped');
+    allFlipped ? flippedSet.delete(i) : flippedSet.add(i);
+  });
+  updateProgress();
+}
+function resetCards(){
+  document.querySelectorAll('.fc').forEach((c,i) => c.classList.remove('flipped'));
+  flippedSet.clear(); updateProgress();
+}
+
+// ============ QUIZ ============
+function startModuleQuiz(){
+  const m = MODULES[currentMod];
+  quizData = m.quiz;
+  quizModLabel = m.title;
+  document.getElementById('quizModLabel').textContent = m.label + ' · ' + m.title.toUpperCase();
+  document.getElementById('quizTitle').textContent = 'Quiz — ' + m.title;
+  startQuiz();
+}
+
+function startAllQuiz(){
+  // combine all quiz questions
+  quizData = [];
+  Object.values(MODULES).forEach(m => {
+    m.quiz.forEach(q => quizData.push({...q, _mod: m.title}));
+  });
+  // shuffle
+  for(let i = quizData.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [quizData[i], quizData[j]] = [quizData[j], quizData[i]];
+  }
+  quizModLabel = 'FULL QUIZ';
+  document.getElementById('quizModLabel').textContent = 'ALL MODULES · FULL QUIZ';
+  document.getElementById('quizTitle').textContent = 'Full Quiz — All 30 Questions';
+  currentMod = 'ms'; // fallback
+  startQuiz();
+  goPage('quizPage');
+}
+
+function startQuiz(){
+  quizIndex = 0; quizScore = 0; quizAnswers = [];
+  document.getElementById('quizScoreLive').textContent = '0';
+  renderQ();
+  goPage('quizPage');
+}
+
+function renderQ(){
+  const q = quizData[quizIndex], total = quizData.length;
+  document.getElementById('quizCat').textContent = q._mod ? q._mod.toUpperCase() : MODULES[currentMod].title.toUpperCase();
+  document.getElementById('quizQNum').textContent = `Q ${String(quizIndex+1).padStart(2,'0')}`;
+  document.getElementById('quizQ').textContent = q.q;
+  document.getElementById('quizProg').textContent = `${quizIndex+1} / ${total}`;
+  document.getElementById('quizBar').style.width = Math.round(quizIndex/total*100)+'%';
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback'; fb.textContent = '';
+  document.getElementById('nextBtn').classList.remove('show');
+  document.getElementById('finishBtn').classList.remove('show');
+  const optsEl = document.getElementById('quizOpts');
+  optsEl.innerHTML = '';
+  const keys = ['A','B','C','D'];
+  q.opts.forEach((opt, i) => {
+    const el = document.createElement('div');
+    el.className = 'opt';
+    el.innerHTML = `<div class="opt-key">${keys[i]}</div><div class="opt-txt">${opt}</div>`;
+    el.addEventListener('click', () => pickAnswer(i, q.ci, q.opts[q.ci]));
+    optsEl.appendChild(el);
+  });
+}
+
+function pickAnswer(chosen, correct, correctText){
+  const opts = document.querySelectorAll('.opt');
+  const fb = document.getElementById('feedback');
+  const ok = chosen === correct;
+  opts.forEach(o => o.classList.add('disabled'));
+  opts[correct].classList.add('correct');
+  if(!ok) opts[chosen].classList.add('wrong');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'no');
+  fb.innerHTML = ok ? '✓ Correct!' : `✗ Wrong. Correct answer: <strong>${correctText}</strong>`;
+  if(ok) quizScore++;
+  document.getElementById('quizScoreLive').textContent = quizScore;
+  quizAnswers.push({
+    q: quizData[quizIndex].q,
+    chosen: quizData[quizIndex].opts[chosen],
+    correct: correctText,
+    ok,
+    mod: quizData[quizIndex]._mod || MODULES[currentMod].title
+  });
+  if(quizIndex < quizData.length-1) document.getElementById('nextBtn').classList.add('show');
+  else document.getElementById('finishBtn').classList.add('show');
+}
+
+function nextQ(){
+  quizIndex++;
+  renderQ();
+  document.getElementById('quizCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ============ RESULT ============
+function showResult(){
+  const total = quizData.length, pct = Math.round(quizScore/total*100);
+  document.getElementById('resTitle').textContent = quizModLabel + ' — Results';
+  document.getElementById('resSub').textContent = `${total} questions · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+  document.getElementById('scoreNum').textContent = quizScore;
+  document.getElementById('scoreDenom').textContent = `out of ${total} questions`;
+  document.getElementById('scorePct').textContent = pct + '%';
+  document.getElementById('rsCorrect').textContent = quizScore;
+  document.getElementById('rsWrong').textContent = total - quizScore;
+  document.getElementById('rsAcc').textContent = pct+'%';
+
+  let grade, gsub;
+  if(pct===100){grade='// PERFECT EXECUTION';gsub='Outstanding. You have mastered this material.';}
+  else if(pct>=80){grade='// STRONG PERFORMANCE';gsub='Solid understanding. Keep refining the edge cases.';}
+  else if(pct>=60){grade='// DEVELOPING EDGE';gsub='Good foundation. Review the missed concepts carefully.';}
+  else{grade='// BACK TO STUDY';gsub='More review needed. Go through the flashcards again.';}
+  document.getElementById('grade').textContent = grade;
+  document.getElementById('gradeSub').textContent = gsub;
+
+  document.getElementById('printMeta').textContent =
+    `${quizModLabel} · Score: ${quizScore}/${total} (${pct}%) · ${new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`;
+
+  const rev = document.getElementById('reviewItems');
+  rev.innerHTML = '';
+  quizAnswers.forEach((a,i) => {
+    const d = document.createElement('div');
+    d.className = 'rev-item ' + (a.ok ? 'ok' : 'no');
+    d.innerHTML = `<div class="rev-q">${i+1}. ${a.q}</div>
+      <div class="rev-row"><span class="rev-lbl g">Correct:</span><span>${a.correct}</span></div>
+      ${!a.ok?`<div class="rev-row"><span class="rev-lbl r">Your Answer:</span><span>${a.chosen}</span></div>`:''}
+      <div class="rev-row"><span class="rev-lbl" style="color:var(--muted)">Module:</span><span style="color:var(--text2);font-size:10px">${a.mod}</span></div>`;
+    rev.appendChild(d);
+  });
+
+  if(pct >= 80) spawnConfetti();
+  goPage('resultPage');
+  document.getElementById('quizBar').style.width = '100%';
+}
+
+function retryQuiz(){
+  quizIndex=0;quizScore=0;quizAnswers=[];
+  document.getElementById('quizScoreLive').textContent='0';
+  renderQ();
+  goPage('quizPage');
+}
+
+// ============ CONFETTI ============
+function spawnConfetti(){
+  const colors=['#00d084','#00ff9d','#3b9eff','#f5c518','#ff3b5c','#fff'];
+  for(let i=0;i<50;i++){
+    setTimeout(()=>{
+      const c=document.createElement('div');
+      c.className='confetti-piece';
+      c.style.cssText=`left:${Math.random()*100}vw;top:-20px;background:${colors[~~(Math.random()*colors.length)]};width:${5+Math.random()*7}px;height:${5+Math.random()*7}px;border-radius:${Math.random()>.5?'50%':'1px'};animation-duration:${2+Math.random()*2}s;animation-delay:${Math.random()*.4}s;`;
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(),4500);
+    },i*35);
+  }
+}
+</script>
+</body>
+</html>
